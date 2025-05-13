@@ -1,1 +1,115 @@
-Hello World
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+
+<head>
+  <title></title>
+</head>
+
+<body>
+  Yo
+  <input type="file" id="jsonFile" name="json" onchange="readText(event)" accept=".json" />
+  </br>
+  <pre id="result"></pre>
+  </br>
+  <span id="debug"></span>
+
+</body>
+
+</html>
+
+<script>
+  function convert() {
+    const selectedFile = document.getElementById("jsonFile").files[0];
+
+    console.log(selectedFile);
+  }
+
+  async function readText(event) {
+    const file = event.target.files.item(0);
+    const text = await file.text();
+    console.log(text);
+
+    prettifyRecipe(text);
+  }
+
+  function prettifyRecipe(text) {
+    var json = JSON.parse(text);
+
+    const blgGravity = gravityToPlato(json.recipe.totalGravity).toFixed(1);
+    const fermentationStart = formatDate(new Date(json.fermentationStartDate));
+    let result = `Warka #${json.batchNo} ${fermentationStart} ${json.recipe.name} ${blgGravity}BLG ${json.recipe.ibu}IBU \n`;
+
+    result = result.concat("Zasyp:\n");
+    for (var i = 0; i < json.recipe.fermentables.length; i++) {
+      var fermentable = json.recipe.fermentables[i];
+      var line = `${fermentable.name} ${fermentable.amount}kg ${fermentable.percentage}%\n`;
+      result = result.concat(line);
+    }
+
+    if (json.recipe.hops.length > 0) {
+
+      result = result.concat("Chmielenie:\n");
+
+      const boilHops = json.recipe.hops.filter(e => e.use === "Boil");
+      const aromaHops = json.recipe.hops.filter(e => e.use === "Aroma");
+      const dryHops = json.recipe.hops.filter(e => e.use === "Dry Hop");
+
+      if (boilHops.length > 0) {
+        result = result.concat("Do kotła:\n");
+        result = result.concat(writeHopsLine(boilHops, (hop) => `${hop.name} ${hop.amount}g ${hop.time}min\n`));
+      }
+
+      if (aromaHops.length > 0) {
+        result = result.concat("Przerwa chmielowa:\n");
+        result = result.concat(writeHopsLine(aromaHops, (hop) => `${hop.name} ${hop.amount}g ${hop.time}min ${hop.temp}℃\n`));
+      }
+
+      if (dryHops.length > 0) {
+        result = result.concat("Na zimno:\n");
+        result = result.concat(writeHopsLine(dryHops, (hop) => `${hop.name} ${hop.amount}g\n`));
+      }
+    }
+
+
+    result = result.concat("Drożdze:\n");
+    for (var i = 0; i < json.recipe.yeasts.length; i++) {
+      var yeast = json.recipe.yeasts[i];
+      var line = `${yeast.productId}\n`;
+      result = result.concat(line);
+    }
+
+    document.getElementById("result").innerHTML = result;
+    console.log(result);
+  }
+
+  function writeHopsLine(array, writeLine) {
+    let hopsString = "";
+    for (var i = 0; i < array.length; i++) {
+      var hop = array[i];
+      var line = writeLine(hop); // `${hop.name} ${hop.amount}g ${hop.time}min\n`;
+      hopsString = hopsString.concat(line);
+    }
+    return hopsString;
+  }
+
+  function gravityToPlato(sg) {
+    const plato =
+      -1 * 616.868 +
+      1111.14 * sg -
+      630.272 * Math.pow(sg, 2) +
+      135.997 * Math.pow(sg, 3);
+    return plato;
+  }
+
+  function formatDate(date) {
+    var month = "" + (date.getMonth() + 1),
+      day = "" + date.getDate(),
+      year = date.getFullYear();
+
+    if (month.length < 2) month = "0" + month;
+    if (day.length < 2) day = "0" + day;
+
+    return [day, month, year].join("-");
+  }
+
+</script>
